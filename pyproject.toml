@@ -9,7 +9,7 @@ description     = "Lightweight context‑aware lexical substitution toolkit"
 readme          = "README.md"
 authors         = [{name = "Shamsuddin Ahmed", email = "info@shamspias.com"}]
 license         = "MIT"                   # ← SPDX string (PEP 639) :contentReference[oaicite:2]{index=2}
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies    = [
     "pydantic>=2.11.3",
     "pydantic-settings>=2.9.1",
@@ -20,6 +20,7 @@ dependencies    = [
     "spacy>=3.8.5",
     "llama-cpp-python>=0.3.8",
     "orjson>=3.10.16",
+    "accelerate>=0.26.0",
     "tqdm>=4.67.1"
 ]
 
