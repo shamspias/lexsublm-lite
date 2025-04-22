@@ -9,7 +9,6 @@ from typing import List, Sequence
 from sentence_transformers import SentenceTransformer, util
 
 from .generator import BaseGenerator
-from .sanitize import Sanitizer
 
 
 class BaseRanker(ABC):

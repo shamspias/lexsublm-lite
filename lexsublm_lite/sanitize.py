@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 import string
-from typing import Iterable, List, Sequence
+from typing import Iterable, List
 
 
 class Sanitizer:
