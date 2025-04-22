@@ -1,50 +1,31 @@
 [build-system]
-requires = ["flit_core>=3.11"]
-build-backend = "flit_core.buildapi"
+requires      = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "masked-lexical-substitution"
-version = "0.1.0"
-description = "Context-aware lexical substitution with lightweight LLMs"
-readme = "README.md"
-authors = [
-    { name = "Shamsuddin Ahmed", email = "info@shamspias.com" }
-]
-license = { text = "MIT" }
+name            = "lexsublm-lite"
+version         = "0.2.0"
+description     = "Lightweight context‑aware lexical substitution toolkit"
+readme          = "README.md"
+authors         = [{name = "Shamsuddin Ahmed", email = "info@shamspias.com"}]
+license         = "MIT"                   # ← SPDX string (PEP 639) :contentReference[oaicite:2]{index=2}
 requires-python = ">=3.11"
-keywords = ["NLP", "lexical substitution", "LLM", "semantic", "SemEval"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.11",
+dependencies    = [
+    "pydantic>=2.11.3",
+    "pydantic-settings>=2.9.1",
+    "torch>=2.6.0",
+    "transformers>=4.51.3",
+    "bitsandbytes>=0.42.0",
+    "sentence-transformers>=4.1.0",
+    "spacy>=3.8.5",
+    "llama-cpp-python>=0.3.8",
+    "orjson>=3.10.16",
+    "tqdm>=4.67.1"
 ]
 
-# Core runtime dependencies
-dependencies = [
-    "llama-cpp-python>=0.3.8", # quantised GGUF inference
-    "transformers>=4.51.3", # HF fallback models
-    "sentence-transformers>=4.1.0", # SBERT similarity / ranking
-    "spacy>=3.8.5", # POS tagging
-    "tqdm>=4.67.1", # progress bars
-    "accelerate>=1.6.0", # CPU / Metal dispatch helpers
-    "safetensors>=0.5.3", # faster model loading
-]
-
-[project.optional-dependencies]
-# Extra packages for development & testing
-dev = [
-    "black>=25.1.0",
-    "ruff>=0.11.6",
-    "pre-commit>=4.2.0",
-    "pytest>=8.3.5",
-    "ipykernel>=6.29.5",
-]
-
-[project.urls]
-Homepage = "https://github.com/shamspias/masked-lexical-substitution"
-Issues = "https://github.com/shamspias/masked-lexical-substitution/issues"
+# **** EXPLICIT PACKAGE LIST ****
+[tool.setuptools]
+packages = ["lexsublm_lite"]             # ← ignore data/ and notebooks/  :contentReference[oaicite:3]{index=3}
 
 [project.scripts]
-lexsublm = "lexsublm.cli:main"
+lexsub = "lexsublm_lite.cli:main"
