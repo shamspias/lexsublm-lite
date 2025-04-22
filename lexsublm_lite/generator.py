@@ -1,118 +1,131 @@
 """
-LLM back‑ends (llama‑cpp‑python and 🤗Transformers).
+Model loader that supports:
+• Hugging Face repos (full / 4‑bit)      – CPU / MPS / CUDA
+• GGUF files via llama.cpp               – all OSes
+• Friendly aliases via model_registry.yaml
 """
 from __future__ import annotations
 
 import logging
+import yaml
 from pathlib import Path
-from typing import List, Sequence
+from typing import ClassVar, Dict, Sequence
 from abc import ABC, abstractmethod
 
 import torch
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    BitsAndBytesConfig,
-    TextIteratorStreamer,
-)
-from llama_cpp import Llama  # type: ignore
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
 
+try:
+    from transformers import BitsAndBytesConfig  # noqa: WPS433
+
+    HAVE_BNB = True
+except ImportError:
+    BitsAndBytesConfig = None  # type: ignore
+    HAVE_BNB = False
+
+from llama_cpp import Llama  # type: ignore
 from .config import Settings
 
-LOGGER = logging.getLogger("lexsublm.generator")
+_LOG = logging.getLogger("lexsublm.generator")
+
+# ---------- registry helper ------------------------------------------------ #
+_REG_PATH = Path(__file__).resolve().parent.parent / "model_registry.yaml"
+_ALIAS: Dict[str, str] = yaml.safe_load(_REG_PATH.read_text()) if _REG_PATH.exists() else {}
 
 
-# --------------------------------------------------------------------- #
-# Abstract base
-# --------------------------------------------------------------------- #
+def _resolve(name: str) -> str:
+    """Turn alias → repo‑id / path if defined in registry."""
+    return _ALIAS.get(name, name)
+
+
+# ---------- abstract base --------------------------------------------------- #
 class BaseGenerator(ABC):
     @abstractmethod
     def generate(self, prompt: str, *, n: int = 5, temperature: float = 0.7) -> Sequence[str]: ...
 
-    # optional log‑prob API used by LogProbRanker
-    def log_prob(self, prompt: str, token: str) -> float:  # noqa: D401
-        raise NotImplementedError
+    def log_prob(self, prompt: str, token: str) -> float: ...  # optional
 
 
-# --------------------------------------------------------------------- #
-# llama.cpp back‑end (GGUF files)
-# --------------------------------------------------------------------- #
-class LlamaCppGenerator(BaseGenerator):
-    def __init__(self, model_path: Path, n_ctx: int = 2048) -> None:
-        self._llm = Llama(model_path=str(model_path), n_ctx=n_ctx, logits_all=True)
-        self._tokenize = self._llm.tokenize
-        LOGGER.info("Loaded GGUF model %s", model_path)
+# ---------- llama.cpp (GGUF) ------------------------------------------------ #
+class LlamaCppGen(BaseGenerator):
+    def __init__(self, path: Path, n_ctx: int = 2048) -> None:
+        self.llm = Llama(model_path=str(path), n_ctx=n_ctx, logits_all=True)
+        self._tok = self.llm.tokenize
+        _LOG.info("GGUF loaded: %s", path.name)
 
-    # -- generation ------------------------------------------------- #
     def generate(self, prompt: str, *, n: int = 5, temperature: float = 0.7) -> Sequence[str]:
-        out = self._llm(
-            prompt,
-            max_tokens=1,
-            temperature=temperature,
-            top_k=50,
-            n=n,
-            stop=["\n"],
-        )
+        out = self.llm(prompt, max_tokens=1, n=n, temperature=temperature, top_k=50, stop=["\n"])
         return [c["text"].strip() for c in out["choices"]]
 
-    # -- token‑level log‑prob (first position) ---------------------- #
     def log_prob(self, prompt: str, token: str) -> float:
-        tok_ids = self._tokenize(token.encode())
-        logits = self._llm(prompt, max_tokens=1, logits_all=True)["choices"][0]["logits"][0]
-        return float(logits[tok_ids[0]])
+        tid = self._tok(token.encode())[0]
+        logits = self.llm(prompt, max_tokens=1, logits_all=True)["choices"][0]["logits"][0]
+        return float(logits[tid])
 
 
-# --------------------------------------------------------------------- #
-# Transformers back‑end (4‑bit quantised)
-# --------------------------------------------------------------------- #
-class HFGenerator(BaseGenerator):
-    def __init__(self, repo_id: str, device: str) -> None:
-        bnb_cfg = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_use_double_quant=True,
-        )
-        self._tokenizer = AutoTokenizer.from_pretrained(repo_id, trust_remote_code=True)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            repo_id,
+# ---------- HF (full / 4‑bit) ---------------------------------------------- #
+class HFGen(BaseGenerator):
+    _cache: ClassVar[Dict[str, "HFGen"]] = {}
+
+    def __new__(cls, repo: str, device: str):
+        key = f"{repo}-{device}"
+        if key in cls._cache:
+            return cls._cache[key]
+        inst = super().__new__(cls)
+        cls._cache[key] = inst
+        return inst
+
+    def __init__(self, repo: str, device: str) -> None:
+        if getattr(self, "_ready", False):
+            return
+        self._ready = True
+
+        quant_cfg = None
+        if device == "cuda" and HAVE_BNB:
+            quant_cfg = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_use_double_quant=True,
+            )
+            _LOG.info("4‑bit bitsandbytes active.")
+        else:
+            _LOG.info("Full / 8‑bit (device=%s) – bitsandbytes disabled.", device)
+
+        self.tok = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            repo,
             device_map="auto" if device != "cpu" else None,
-            quantization_config=bnb_cfg,
+            torch_dtype=torch.float16 if device == "mps" else torch.float32,
             trust_remote_code=True,
+            quantization_config=quant_cfg,
         ).eval()
-        LOGGER.info("Loaded HF model %s (device=%s)", repo_id, self._model.device)
+        self.device = self.model.device
+        _LOG.info("Model ready on %s", self.device)
 
-    # -- generation ------------------------------------------------- #
+    # -- generation -------------------------------------------- #
     def generate(self, prompt: str, *, n: int = 5, temperature: float = 0.7) -> Sequence[str]:
-        toks = self._tokenizer([prompt] * n, return_tensors="pt", padding=True)
-        toks = {k: v.to(self._model.device) for k, v in toks.items()}
-        streamer = TextIteratorStreamer(self._tokenizer, skip_prompt=True, skip_special_tokens=True)
-        self._model.generate(
-            **toks,
-            max_new_tokens=1,
-            do_sample=True,
-            temperature=temperature,
-            top_k=50,
-            streamer=streamer,
+        toks = self.tok([prompt] * n, return_tensors="pt", padding=True).to(self.device)
+        streamer = TextIteratorStreamer(self.tok, skip_prompt=True, skip_special_tokens=True)
+        self.model.generate(
+            **toks, max_new_tokens=1, do_sample=True, temperature=temperature, top_k=50, streamer=streamer
         )
         return [next(streamer).strip() for _ in range(n)]
 
-    # -- log‑prob --------------------------------------------------- #
+    # -- log‑prob ---------------------------------------------- #
     def log_prob(self, prompt: str, token: str) -> float:
-        tok_id = self._tokenizer.encode(token, add_special_tokens=False)[0]
-        inp = self._tokenizer(prompt, return_tensors="pt").to(self._model.device)
+        tid = self.tok.encode(token, add_special_tokens=False)[0]
+        inp = self.tok(prompt, return_tensors="pt").to(self.device)
         with torch.inference_mode():
-            logits = self._model(**inp).logits[0, -1]
-        return float(torch.log_softmax(logits, dim=-1)[tok_id].cpu())
+            logits = self.model(**inp).logits[0, -1]
+        return float(torch.log_softmax(logits, dim=-1)[tid].cpu())
 
 
-# --------------------------------------------------------------------- #
-# Factory
-# --------------------------------------------------------------------- #
-def build_generator(model_name: str | None = None) -> BaseGenerator:
+# ---------- factory -------------------------------------------------------- #
+def build_generator(name: str | None = None) -> BaseGenerator:
     cfg = Settings.instance()
-    name = model_name or cfg.model_name
-    path = Path(name)
+    resolved = _resolve(name or cfg.model_name)
+    path = Path(resolved)
     if path.suffix == ".gguf":
-        return LlamaCppGenerator(path)
-    return HFGenerator(name, cfg.device)
+        return LlamaCppGen(path)
+    return HFGen(resolved, cfg.device)
