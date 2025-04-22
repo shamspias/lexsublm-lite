@@ -1,0 +1,8 @@
+# key = ALIAS used on CLI / env
+# val = HF repo‑id  *or*  local path to .gguf
+deepseek-coder: deepseek-ai/deepseek-coder-1.3b-instruct
+deepseek-qwen: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+llama3-mini: meta-llama/Llama-3.2-1B
+# examples you can add later:
+# phi2:          microsoft/phi-2
+# local-gguf:    ./models/phi-2-Q4_K_M.gguf
