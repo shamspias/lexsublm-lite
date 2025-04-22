@@ -16,16 +16,15 @@ LOGGER = logging.getLogger("lexsublm.pipeline")
 
 
 class LexSubPipeline:
-    """Single entry‑point used by CLI & notebooks."""
-
     def __init__(
             self,
             *,
             generator: BaseGenerator | None = None,
             use_sbert_ranker: bool = True,
+            model_name: str | None = None,
     ) -> None:
         self.cfg = Settings.instance()
-        self.gen = generator or build_generator()
+        self.gen = generator or build_generator(model_name)
         self.filters = [PosMorphFilter(), CosineFilter()]
         self.ranker = SBertRanker() if use_sbert_ranker else LogProbRanker(self.gen)
 
