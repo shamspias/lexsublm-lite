@@ -22,12 +22,12 @@ class _RunCommand:
         p.add_argument("--sentence", required=True)
         p.add_argument("--target", required=True)
         p.add_argument("--top_k", type=int, default=5)
-        p.add_argument("--model", help="HF repo or local .gguf file")  # NEW
+        p.add_argument("--model", help="Alias or HF repo or .gguf path")
         p.set_defaults(func=_RunCommand.run)
 
     @staticmethod
     def run(args):
-        pipeline = LexSubPipeline(model_name=args.model)  # NEW
+        pipeline = LexSubPipeline(model_name=args.model)
         out = pipeline.substitute(args.sentence, args.target, k=args.top_k)
         print(json.dumps(out, ensure_ascii=False, indent=2))
 
