@@ -21,6 +21,7 @@ dependencies    = [
     "llama-cpp-python>=0.3.8",
     "orjson>=3.10.16",
     "accelerate>=0.26.0",
+    "tabulate2>=1.10.0",
     "tqdm>=4.67.1"
 ]
 
