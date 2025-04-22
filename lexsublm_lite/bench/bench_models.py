@@ -13,13 +13,13 @@ from __future__ import annotations
 import argparse
 import yaml
 from pathlib import Path
-from typing import Dict, List, Sequence
+from typing import Dict, List
 
-from tabulate2 import tabulate  # ➊ pip install tabulate2
+from tabulate2 import tabulate  # pip install tabulate2
 from lexsublm_lite.pipeline import LexSubPipeline
 
-# ───────────────────────── GOLD TEST‑SET ────────────────────────── #
-TESTS: Sequence[dict] = [
+# ───────────────────────── GOLD TEST‑SET (5 cases) ─────────────────────── #
+TESTS = [
     {
         "sentence": "The bright student aced the exam.",
         "target": "bright",
@@ -48,7 +48,7 @@ TESTS: Sequence[dict] = [
 ]
 
 
-# ────────────────────────── METRICS ─────────────────────────────── #
+# ───────────────────────────── METRICS ──────────────────────────────── #
 def p_at_1(pred: List[str], gold: List[str]) -> float:
     return float(bool(pred and pred[0] in gold))
 
@@ -62,12 +62,12 @@ def jaccard(pred: List[str], gold: List[str]) -> float:
     return len(s1 & s2) / len(s1 | s2) if s1 | s2 else 0.0
 
 
-# ────────────────────────── BENCHMARK ───────────────────────────── #
+# ───────────────────────────── BENCHMARK ────────────────────────────── #
 def load_registry() -> Dict[str, str]:
-    reg = Path(__file__).resolve().parent.parent.parent / "model_registry.yaml"
-    if not reg.exists():
+    reg_path = Path(__file__).resolve().parent.parent.parent / "model_registry.yaml"
+    if not reg_path.exists():
         raise FileNotFoundError("model_registry.yaml not found.")
-    return yaml.safe_load(reg.read_text())
+    return yaml.safe_load(reg_path.read_text())
 
 
 def bench_alias(alias: str, k: int) -> Dict[str, float]:
@@ -83,24 +83,28 @@ def bench_alias(alias: str, k: int) -> Dict[str, float]:
 
 
 def main() -> None:  # noqa: D401
-    ap = argparse.ArgumentParser(description="Mini‑benchmark for lexical substitution models.")
-    ap.add_argument("--top_k", type=int, default=5, help="Evaluate top‑k suggestions (default: 5)")
+    ap = argparse.ArgumentParser(description="Benchmark LexSubLM‑Lite models")
+    ap.add_argument("--top_k", type=int, default=5, help="Top‑k suggestions to evaluate")
     args = ap.parse_args()
 
+    registry = load_registry()
     rows: List[List[str]] = []
-    for alias in load_registry():
+    for alias in registry:
         print(f"→ running {alias}")
-        scores = bench_alias(alias, args.top_k)
-        rows.append(
-            [
+        try:
+            scores = bench_alias(alias, args.top_k)
+            rows.append([
                 alias,
                 f"{scores['P@1']:.2f}",
                 f"{scores[f'R@{args.top_k}']:.2f}",
                 f"{scores['Jaccard']:.2f}",
-            ]
-        )
+            ])
+        except Exception as e:
+            print(f"⚠️  {alias} failed: {e.__class__.__name__}: {e}")
+            rows.append([alias, "ERR", "ERR", "ERR"])
 
-    rows.sort(key=lambda r: float(r[1]), reverse=True)  # sort by P@1
+    # sort by Precision@1 descending
+    rows.sort(key=lambda r: float(r[1]) if r[1] not in {"ERR"} else -1, reverse=True)
     print("\n" + tabulate(rows, headers=["Model", "P@1", f"R@{args.top_k}", "Jaccard"], tablefmt="github"))
 
 
