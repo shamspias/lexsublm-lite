@@ -106,7 +106,7 @@ class HFGen(BaseGenerator):
     # -- generation ------------------------------------------------- #
     def generate(self, prompt: str, *, n: int = 5, temperature: float = 0.7) -> Sequence[str]:
         if n == 1:
-            # streaming path (nice for inter­active UIs, still batch=1)
+            # streaming path (nice for inter-active UIs, still batch=1)
             toks = self.tok(prompt, return_tensors="pt").to(self.device)
             streamer = TextIteratorStreamer(self.tok, skip_prompt=True, skip_special_tokens=True)
             self.model.generate(
