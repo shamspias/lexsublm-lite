@@ -16,19 +16,18 @@ _LOG = logging.getLogger("lexsublm.cli")
 
 
 class _RunCommand:
-    """Generate substitutes for one sentence."""
-
     @staticmethod
-    def add_parser(sub: argparse._SubParsersAction[Argparse]) -> None:  # type: ignore[name-defined]
+    def add_parser(sub):  # type: ignore[arg-type]
         p = sub.add_parser("run", help="Generate substitutes")
         p.add_argument("--sentence", required=True)
         p.add_argument("--target", required=True)
         p.add_argument("--top_k", type=int, default=5)
+        p.add_argument("--model", help="HF repo or local .gguf file")  # NEW
         p.set_defaults(func=_RunCommand.run)
 
     @staticmethod
-    def run(args: argparse.Namespace) -> None:
-        pipeline = LexSubPipeline()
+    def run(args):
+        pipeline = LexSubPipeline(model_name=args.model)  # NEW
         out = pipeline.substitute(args.sentence, args.target, k=args.top_k)
         print(json.dumps(out, ensure_ascii=False, indent=2))
 
