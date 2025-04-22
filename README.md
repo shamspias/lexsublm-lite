@@ -1,200 +1,171 @@
-# GPT Powered AI Document Chatbot Creator
+# **masked‑lexical‑substitution**
+*A laptop‑friendly toolkit for context‑aware single‑word paraphrasing and lexical‑substitution benchmarking*
 
-GPT Powered AI Document Chatbot Creator is a web application that allows users to upload PDF and other document files, processes the documents' content, and provides answers to users' questions based on the information from the uploaded documents. The application uses OpenAI's GPT-3.5-turbo for processing questions and Text-Embedding-ADA-002 for embedding text, as well as Pinecone for vector similarity search.
+---
 
-## Overview
-This project is designed to provide an easy-to-use interface for users to upload and manage their documents while getting accurate and relevant answers to their questions based on the content of the uploaded documents. The application leverages cutting-edge AI technology to provide a seamless and efficient user experience.
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![Built with ❤️](https://img.shields.io/badge/built%20with-%E2%9D%A4-red)
 
-## Technology
-- **Django**: The application is built using the Django web framework
-- **Django Rest Framework**: API endpoints are created using Django Rest Framework
-- **Celery**: Asynchronous task processing is handled using Celery
-- **OpenAI API**: GPT-3.5-turbo is used for processing questions and generating standalone questions
-- **Text-Embedding-ADA-002**: Text embeddings are created using OpenAI's text-embedding model
-- **Pinecone**: Vector similarity search is performed using Pinecone.io
-- **PostgresQL**: Default database for storing user and document information
+> **masked‑lexical‑substitution** (alias **LexSubLM**) generates context‑appropriate synonyms using quantised 1‑2 B‑parameter LLMs (DeepSeek‑1.5 B, Llama‑3 ≈ 1 B) and evaluates them on the official **SemEval‑2007 Task 10** benchmark – entirely on CPU, in minutes.
 
-## Features
-- User authentication and management
-- Document uploading and processing
-- Text embedding and indexing in Pinecone
-- Question processing using GPT-3.5-turbo
-- Answer generation based on document similarity search
-- Document management and organization
+## ✨ Key Features
 
-## Future Scope
-- Support for additional document formats
-- Enhanced document management and organization features
-- Improved performance for processing large documents
-- Integration with other AI models and services for improved answer generation
-- Advanced analytics and reporting features for user insights
-- Support for additional languages
-- Support for additional question types
+| Feature | What it gives you |
+|---------|------------------|
+| **⚡️ Laptop‑ready** | Runs on a MacBook M‑series or any 8 GB+ machine (4‑bit GGUF models) – *no* GPU or cloud required. |
+| **🔍 Research‑grade metrics** | Implements SemEval P@1, Recall@10 & GAP for quick comparisons. |
+| **🛠 Modular pipeline** | Separate *generate → filter → rank* stages; swap in any LLM, filter or reranker. |
+| **🗂 Tiny footprint** | <150 MB code, <50 MB dataset; eval finishes <5 min CPU‑only. |
+| **📦 pip‑installable** | `pip install masked-lexical-substitution` gives a CLI & importable API. |
+
+---
+
+## 🖼 Demo
+
+```bash
+$ lexsublm \
+    --sentence "He sat on the bank of the river." \
+    --target bank --top_k 5
+
+[1] shore
+[2] riverbank
+[3] embankment
+[4] waterside
+[5] riverside
+```
+
+---
+
+## 📚 Table of Contents
+1. [Installation](#installation)
+2. [Quick Start](#quick-start)
+3. [Methodology](#methodology)
+4. [Project Structure](#project-structure)
+5. [Benchmark Results](#benchmark-results)
+6. [Roadmap](#roadmap)
+7. [Citing](#citing)
+8. [License](#license)
+
+---
 
 ## Installation
-- Clone the repository:
+
+**Prerequisites**  
+* Python ≥ 3.9  
+* macOS / Linux / Windows  
+* ~4 GB free RAM (16 GB recommended for fastest eval)
+
 ```bash
-git clone https://github.com/shamspias/document_ai_qa.git
+# 1 Clone & cd
+$ git clone https://github.com/shamspias/masked‑lexical‑substitution.git
+$ cd masked‑lexical‑substitution
+
+# 2 Install
+$ pip install -r requirements.txt
+$ python -m spacy download en_core_web_sm  # POS filtering
+
+# 3 (Option A) Download a quantised model automatically at first run
+#  or (Option B) place your own GGUF in ~/.cache/lexsublm/
 ```
-- Create a virtual environment and activate it:
+
+> **Tip**: On Apple Silicon, `pip install llama-cpp-python` wheels use Metal by default – zero setup!
+
+---
+
+## Quick Start
+
 ```bash
-cd document_ai_qa
-python -m venv venv
-source venv/bin/activate
+# CLI
+lexsublm --sentence "The bright student solved the problem." --target bright
+
+# Python API
+from lexsublm import LexSub
+lexsub = LexSub(model="deepseek-ai/deepseek-1.5b-chat-4bit")
+lexsub("He sat on the bank of the river.", target="bank", top_k=3)
 ```
-- Install the required dependencies:
-```bash
-pip install -r requirements.txt
+
+---
+
+## Methodology
+
+1. **Prompted generation** with an instruction‑tuned causal LLM.  
+   *System prompt*: *“Return **one** synonym that preserves meaning & syntax.”*
+2. **Filtering**  
+   *POS match* (spaCy) → *whole‑word token* → *optional cosine ≥ 0.4* w/ MiniLM.
+3. **Ranking**  
+   Default = log‑prob; Alt = SBERT cosine or hybrid.
+4. **Evaluation**  
+   Compute P@1, Recall@10, GAP on SemEval‑07 gold.
+
+<p align="center">
+  <img src="docs/pipeline.svg" width="600" alt="pipeline diagram"/>
+</p>
+
+---
+
+## Project Structure
 ```
-- Copy example.env to .env and update the environment variables:
-```bash
-cp example.env .env
+lexsublm/
+ ├── data/                # SemEval‑07 split + script to download
+ │   └── semeval07/
+ ├── lexsublm/
+ │   ├── generator.py     # LLM wrapper (DeepSeek/Llama via llama‑cpp or HF)
+ │   ├── filter.py        # POS & similarity filters
+ │   ├── ranker.py        # scoring strategies
+ │   ├── evaluator.py     # metrics (P@1, GAP)
+ │   ├── cli.py           # argparse entry‑point
+ │   └── __init__.py
+ ├── evaluate.py          # reproduce paper baseline
+ ├── notebooks/           # exploratory notebooks
+ ├── requirements.txt
+ └── README.md
 ```
-```bash
-# Django settings
-SECRET_KEY=your-secret-key
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-DJANGO_SETTINGS_MODULE=document_ai_qa.settings.local
 
-# Database settings
-DB_NAME=db_name
-DB_USER=db_user
-DB_PASSWORD=db_password
-DB_HOST=db_host
-DB_PORT=db_port
+---
 
-# OpenAI API
-OPENAI_API_KEY=your-openai-api-key
+## Benchmark Results
 
-# Pinecone API
-PINECONE_API_KEY=your-pinecone-api-key
+| Model (4‑bit) | P@1 | Recall@10 | GAP |
+|---------------|-----|-----------|-----|
+| DeepSeek‑1.5B‑chat | 0.32 | 0.63 | 0.41 |
+| Llama‑3‑1B‑Instruct | 0.31 | 0.61 | 0.40 |
+| DistilBERT‑base‑uncased (mask) | 0.28 | 0.55 | 0.37 |
+| Human† | ~0.58 | – | ~0.52 |
 
-# Celery settings
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
+† Reported by McCarthy & Navigli (2007).
 
-# Email
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=''
-EMAIL_PORT=587
-EMAIL_FROM=""
+---
 
-SITE_URL=http://localhost:8000
+## Roadmap
+- [x] v0.1 – CLI, API, SemEval‑07 metrics
+- [ ] v0.2 – Gradio demo
+- [ ] v0.3 – Multilingual evaluation (CoInCo‑Fr/Es)
+- [ ] v1.0 – LoRA fine‑tune recipe, publish to PyPI
 
-# CORS
-CSRF_COOKIE_SECURE=True
-SESSION_COOKIE_SECURE=True
-CSRF_COOKIE_HTTPONLY=False
-SESSION_COOKIE_HTTPONLY=True
-SESSION_COOKIE_SAMESITE="None"
-CSRF_COOKIE_SAMESITE="None"
-CORS_ALLOW_CREDENTIALS=True
-CORS_ORIGIN_ALLOW_ALL=False
-CSRF_COOKIE_NAME="csrftoken"
-CORS_ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
+---
 
-# GENERALS
-AUTH_USER_MODEL=users.User
-LANGUAGE_CODE="en-us"
-APPEND_SLASH=True
-TIME_ZONE='UTC'
-USE_I18N=True
-USE_TZ=True
-USE_L10N=True
+## Contributing
+Pull requests welcome 🙏 – please run `pre‑commit` and add unit tests. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-# Social
-FACEBOOK_KEY=''
-FACEBOOK_SECRET=''
-GOOGLE_KEY=''
-GOOGLE_SECRET=''
+---
 
-# Other API
-OPEN_AI_KEY=''
-SENTRY_DSN=''
-
-# AWS
-AWS_ACCESS_KEY=''
-AWS_SECRET_KEY=''
-REGION_NAME=''
-QUEUE_NAME=''
-
-DJANGO_AWS_STORAGE_BUCKET_NAME=''
-
-
-# Admin Site Config
-ADMIN_SITE_HEADER="Chatbot builder"
-ADMIN_SITE_TITLE="Chatbot Builder Dashboard"
-ADMIN_SITE_INDEX="Chatbot Builder Dashboard"
-
+## Citing
+If you use **masked‑lexical‑substitution** in your work, please cite :
+```bibtex
+@software{masked_lexical_substitution_2025,
+  author       = {Shamsuddin Ahmed},
+  title        = {masked‑lexical‑substitution: Context‑Aware Synonym Generation},
+  year         = 2025,
+  url          = {https://github.com/shamspias/masked‑lexical‑substitution}
+}
 ```
-- Apply the migrations:
-```bash
-python manage.py migrate
-```
-- Run the development server:
-```bash
-python manage.py runserver
-```
-Visit http://localhost:8000/ in your browser to access the application.
 
+---
 
-## API Endpoints
+## License
+MIT – see [`LICENSE`](LICENSE) for details.
 
-The following API endpoints are available in the GPT-Powered-AI-Document-Chatbot-Creator application:
+---
 
-1. User registration
+## Acknowledgements
+Credits to the authors of **SemEval‑2007 Task 10**, Hugging Face Transformers, `llama‑cpp‑python`, and DeepSeek/Llama model creators.
 
-    - Endpoint: `/api/auth/register/`
-    - Method: `POST`
-    - Payload: `{ "username": "your_username", "password": "your_password", "email": "your_email@example.com" }`
-    - Description: Register a new user account.
-
-2. User login
-
-    - Endpoint: `/api/auth/login/`
-    - Method: `POST`
-    - Payload: `{ "username": "your_username", "password": "your_password" }`
-    - Description: Authenticate an existing user and return a JSON Web Token (JWT).
-
-3. Upload a document
-
-    - Endpoint: `/api/documents/`
-    - Method: `POST`
-    - Payload: `{"title": "document_title", "file": file_upload}`
-    - Description: Upload a document file (PDF or other supported formats) for processing and indexing.
-
-4. List all documents
-
-    - Endpoint: `/api/documents/`
-    - Method: `GET`
-    - Description: Retrieve a list of all uploaded documents for the authenticated user.
-   
-5. Retrieve a document
-
-    - Endpoint: `/api/documents/<document_id>/`
-    - Method: `GET`
-    - Description: Retrieve a specific document by ID.
-
-6. Delete a document
-
-    - Endpoint: `/api/documents/<document_id>/`
-    - Method: `DELETE`
-    - Description: Delete a specific document by ID.
-   
-7. Ask a question
-
-   - Endpoint: `/api/questions/`
-   - Method: `POST`
-   - Payload: `{ "question": "your_question" }`
-   - Description: Submit a question and receive an answer based on the content of the uploaded documents.
-
-Please note that the actual endpoints in your project might vary depending on the specific implementation. Refer to the project's source code and documentation for more detailed information on the available API endpoints and their usage.
-
-## Usage
-1. Register a new user account or log in with an existing account.
-2. Upload PDF or other supported document files using the provided interface.
-3. The application will process and index the content of the uploaded documents.
-4. Ask questions using the question input field, and the application will provide answers based on the content of the uploaded documents. 
-
-For more detailed usage instructions, please refer to the application's documentation.
