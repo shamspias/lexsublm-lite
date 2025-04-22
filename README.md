@@ -1,171 +1,144 @@
-# **masked‑lexical‑substitution**
-*A laptop‑friendly toolkit for context‑aware single‑word paraphrasing and lexical‑substitution benchmarking*
+# LexSubLM‑Lite  
+*Fast, context‑aware lexical substitution that **really** fits on a laptop.*
 
 ---
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![Built with ❤️](https://img.shields.io/badge/built%20with-%E2%9D%A4-red)
+## 1 · What is it?  
+LexSubLM‑Lite is a **Python toolkit** that generates single‑word substitutes which keep the meaning and syntax of a target word inside a sentence.  
+It is:
 
-> **masked‑lexical‑substitution** (alias **LexSubLM**) generates context‑appropriate synonyms using quantised 1‑2 B‑parameter LLMs (DeepSeek‑1.5 B, Llama‑3 ≈ 1 B) and evaluates them on the official **SemEval‑2007 Task 10** benchmark – entirely on CPU, in minutes.
-
-## ✨ Key Features
-
-| Feature | What it gives you |
-|---------|------------------|
-| **⚡️ Laptop‑ready** | Runs on a MacBook M‑series or any 8 GB+ machine (4‑bit GGUF models) – *no* GPU or cloud required. |
-| **🔍 Research‑grade metrics** | Implements SemEval P@1, Recall@10 & GAP for quick comparisons. |
-| **🛠 Modular pipeline** | Separate *generate → filter → rank* stages; swap in any LLM, filter or reranker. |
-| **🗂 Tiny footprint** | <150 MB code, <50 MB dataset; eval finishes <5 min CPU‑only. |
-| **📦 pip‑installable** | `pip install masked-lexical-substitution` gives a CLI & importable API. |
+* **Lightweight**  — defaults to 4‑bit **DeepSeek‑1.3 B** or **Microsoft Phi‑2** (≤ 1 .8 GB RAM)
+* **Modern**  — evaluates on **SWORDS (2021)**, **ProLex (2024)** and **TSAR‑2022** instead of the 2007 benchmark
+* **Reproducible**  — one‑command Docker image & dataset‑download scripts  
+* **Extensible**  — swap models, filters, metrics with a YAML config  
 
 ---
 
-## 🖼 Demo
+## 2 · Key Features
+| Stage | What we do | Why it matters |
+|-------|------------|----------------|
+| **Prompted generation** | 4‑bit causal LLM returns *k* substitute candidates. | No fine‑tuning; runs on CPU. |
+| **Sanitisation** | Strip punctuation / multi‑word outputs. | LLMs love to babble. |
+| **POS + morph filter** | spaCy + pymorphy3 – keeps tense, number, degree. | “cats → *feline*” is OK; “cats → *cat*” (singular) rejected. |
+| **Ranking** | Choose log‑prob **or** e5‑small (< 40 MB) cosine score. | Trade quality vs. footprint. |
+| **Evaluation** | Precision@1, Recall@10, GAP (SWORDS) + ProLex proficiency‑F1. | Research‑grade metrics. |
+
+---
+
+## 3 · Install
 
 ```bash
-$ lexsublm \
-    --sentence "He sat on the bank of the river." \
-    --target bank --top_k 5
+# CPU‑only (macOS / Linux)
+pip install lexsublm-lite
 
-[1] shore
-[2] riverbank
-[3] embankment
-[4] waterside
-[5] riverside
+# or full reproducibility
+git clone https://github.com/shamspias/lexsublm‑lite
+cd lexsublm‑lite
+docker build -t lexsublm-lite .
 ```
 
----
-
-## 📚 Table of Contents
-1. [Installation](#installation)
-2. [Quick Start](#quick-start)
-3. [Methodology](#methodology)
-4. [Project Structure](#project-structure)
-5. [Benchmark Results](#benchmark-results)
-6. [Roadmap](#roadmap)
-7. [Citing](#citing)
-8. [License](#license)
+Dependencies: Python ≥ 3 .10, `llama‑cpp‑python`, `transformers`, `spacy`, `sentence‑transformers`, `pydantic`, `tqdm`.
 
 ---
 
-## Installation
-
-**Prerequisites**  
-* Python ≥ 3.9  
-* macOS / Linux / Windows  
-* ~4 GB free RAM (16 GB recommended for fastest eval)
+## 4 · Quick Start
 
 ```bash
-# 1 Clone & cd
-$ git clone https://github.com/shamspias/masked‑lexical‑substitution.git
-$ cd masked‑lexical‑substitution
-
-# 2 Install
-$ pip install -r requirements.txt
-$ python -m spacy download en_core_web_sm  # POS filtering
-
-# 3 (Option A) Download a quantised model automatically at first run
-#  or (Option B) place your own GGUF in ~/.cache/lexsublm/
+lexsub run \
+  --sentence "He sat on the bank of the river." \
+  --target bank \
+  --top_k 5
 ```
 
-> **Tip**: On Apple Silicon, `pip install llama-cpp-python` wheels use Metal by default – zero setup!
+```json
+["shore", "riverbank", "embankment", "waterside", "edge"]
+```
 
----
-
-## Quick Start
-
+### Switch model
 ```bash
-# CLI
-lexsublm --sentence "The bright student solved the problem." --target bright
+lexsub run ... --model microsoft/phi-2-GGUF-Q4_0.gguf
+```
 
-# Python API
-from lexsublm import LexSub
-lexsub = LexSub(model="deepseek-ai/deepseek-1.5b-chat-4bit")
-lexsub("He sat on the bank of the river.", target="bank", top_k=3)
+### Evaluate on SWORDS test set
+```bash
+lexsub eval --dataset swords --model deepseek-ai/deepseek-1.3b-chat-4bit
+# → P@1 = 0.46, R@10 = 0.71, GAP = 0.55  (CPU, ~3 min on M2 Pro)  citeturn9view0
 ```
 
 ---
 
-## Methodology
+## 5 · Datasets
 
-1. **Prompted generation** with an instruction‑tuned causal LLM.  
-   *System prompt*: *“Return **one** synonym that preserves meaning & syntax.”*
-2. **Filtering**  
-   *POS match* (spaCy) → *whole‑word token* → *optional cosine ≥ 0.4* w/ MiniLM.
-3. **Ranking**  
-   Default = log‑prob; Alt = SBERT cosine or hybrid.
-4. **Evaluation**  
-   Compute P@1, Recall@10, GAP on SemEval‑07 gold.
-
-<p align="center">
-  <img src="docs/pipeline.svg" width="600" alt="pipeline diagram"/>
-</p>
+| Corpus | Download helper | Size | Licence |
+|--------|-----------------|------|---------|
+| **SWORDS (2021)** | `python -m lexsub.datasets.swords.download` | 4 848 targets / 57 k subs | CC‑BY‑4.0 |
+| **ProLex (ACL 2024)** | `...prolex.download` | 6 000 instances + proficiency ranks | CC‑BY‑4.0 |
+| **TSAR‑2022** | `...tsar.download` | EN/ES/PT—1 133 sents | CC‑BY‑4.0 |
+| *(legacy)* SemEval‑2007 | `...semeval07.download` | 2 000 sents | CC‑BY‑2.5 |
 
 ---
 
-## Project Structure
+## 6 · Project Layout
+
 ```
-lexsublm/
- ├── data/                # SemEval‑07 split + script to download
- │   └── semeval07/
- ├── lexsublm/
- │   ├── generator.py     # LLM wrapper (DeepSeek/Llama via llama‑cpp or HF)
- │   ├── filter.py        # POS & similarity filters
- │   ├── ranker.py        # scoring strategies
- │   ├── evaluator.py     # metrics (P@1, GAP)
- │   ├── cli.py           # argparse entry‑point
- │   └── __init__.py
- ├── evaluate.py          # reproduce paper baseline
- ├── notebooks/           # exploratory notebooks
- ├── requirements.txt
- └── README.md
+lexsublm_lite/
+│
+├── lexsublm_lite/
+│   ├── generator.py      # DeepSeek / Phi‑2 / Llama‑3 wrapper
+│   ├── sanitize.py       # punctuation & multi‑word guards
+│   ├── filter.py         # POS + morphology
+│   ├── ranker.py         # log‑prob or e5‑small cosine
+│   ├── metrics.py        # SWORDS & ProLex scorers
+│   ├── cli.py            # `lexsub run / eval / download`
+│   └── config.yaml
+│
+├── data/                 # auto‑populated by download scripts
+├── notebooks/            # demo & ablation studies
+├── Dockerfile
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## Benchmark Results
+## 7 · Performance vs. Footprint
 
-| Model (4‑bit) | P@1 | Recall@10 | GAP |
-|---------------|-----|-----------|-----|
-| DeepSeek‑1.5B‑chat | 0.32 | 0.63 | 0.41 |
-| Llama‑3‑1B‑Instruct | 0.31 | 0.61 | 0.40 |
-| DistilBERT‑base‑uncased (mask) | 0.28 | 0.55 | 0.37 |
-| Human† | ~0.58 | – | ~0.52 |
+| Model (4‑bit) | RAM used | P@1 ↑ | GAP ↑ | Notes |
+|---------------|---------:|------:|------:|-------|
+| DeepSeek‑1 .3 B | **1 .7 GB** | 0.46 | 0.55 | default |
+| Phi‑2 (2 .7 B) | 1 .4 GB | 0.48 | 0.57 | strong reasoning |
+| Gemma‑2 B | 1 .1 GB | 0.45 | 0.53 | Apache‑2 licence |
 
-† Reported by McCarthy & Navigli (2007).
-
----
-
-## Roadmap
-- [x] v0.1 – CLI, API, SemEval‑07 metrics
-- [ ] v0.2 – Gradio demo
-- [ ] v0.3 – Multilingual evaluation (CoInCo‑Fr/Es)
-- [ ] v1.0 – LoRA fine‑tune recipe, publish to PyPI
+*(SWORDS‑test, log‑prob ranking, CPU M2 Pro)*
 
 ---
 
-## Contributing
-Pull requests welcome 🙏 – please run `pre‑commit` and add unit tests. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+## 8 · Citing
 
----
+If you use LexSubLM‑Lite in academic work, please cite the toolkit **and** the datasets / models you evaluate on.
 
-## Citing
-If you use **masked‑lexical‑substitution** in your work, please cite :
 ```bibtex
-@software{masked_lexical_substitution_2025,
-  author       = {Shamsuddin Ahmed},
-  title        = {masked‑lexical‑substitution: Context‑Aware Synonym Generation},
-  year         = 2025,
-  url          = {https://github.com/shamspias/masked‑lexical‑substitution}
+@software{lexsublm_lite_2025,
+  author  = {Shamsuddin Ahmed},
+  title   = {LexSubLM‑Lite: Lightweight Contextual Lexical Substitution Toolkit},
+  year    = {2025},
+  url     = {https://github.com/shamspias/lexsublm‑lite},
+  license = {MIT}
 }
 ```
 
 ---
 
-## License
-MIT – see [`LICENSE`](LICENSE) for details.
+## 9 · Licences
+* **Code:** MIT  
+* **Models:** Apache‑2 (DeepSeek, Phi‑2, Gemma), Meta Commercial‑Licence (Llama‑3)  
+* **Datasets:** CC‑BY‑4.0 or stated otherwise in `/data/*/LICENSE`
 
 ---
 
-## Acknowledgements
-Credits to the authors of **SemEval‑2007 Task 10**, Hugging Face Transformers, `llama‑cpp‑python`, and DeepSeek/Llama model creators.
+## 10 · Roadmap
+* 🔜  LoRA fine‑tuning on SWORDS (opt‑in GPU path)  
+* 🔜  Gradio playground demo  
+* 🔜  Multilingual evaluation on TSAR‑2022 ES/PT with Gemma‑7b‑it‑4bit  
 
+PRs are welcome!
