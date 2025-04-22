@@ -22,7 +22,7 @@ curl -L -o "${ROOT}/prolex/ProLex_v1.0_dev.csv" \
 curl -L -o "${ROOT}/prolex/ProLex_v1.0_test.csv" \
   "https://raw.githubusercontent.com/BillyZhang24kobe/LS_Proficiency/main/data/test/ProLex_v1.0_test.csv"  # :contentReference[oaicite:1]{index=1}
 
-echo "==> TSAR‑2022 (en / es / pt)"
+echo "==> TSAR‑2022 (en / es / pt)"
 for lang in en es pt; do
   for split in test_none test_gold; do
     file="tsar2022_${lang}_${split}.tsv"
