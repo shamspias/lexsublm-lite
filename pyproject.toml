@@ -1,5 +1,5 @@
 [build-system]
-requires = ["flit_core>=3.9"]
+requires = ["flit_core>=3.11"]
 build-backend = "flit_core.buildapi"
 
 [project]
@@ -11,7 +11,7 @@ authors = [
     { name = "Shamsuddin Ahmed", email = "info@shamspias.com" }
 ]
 license = { text = "MIT" }
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 keywords = ["NLP", "lexical substitution", "LLM", "semantic", "SemEval"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -23,23 +23,23 @@ classifiers = [
 
 # Core runtime dependencies
 dependencies = [
-    "llama-cpp-python>=0.2.19", # quantised GGUF inference
-    "transformers>=4.39.3", # HF fallback models
-    "sentence-transformers>=2.6.1", # SBERT similarity / ranking
-    "spacy>=3.7.2", # POS tagging
-    "tqdm>=4.66.4", # progress bars
-    "accelerate>=0.28.0", # CPU / Metal dispatch helpers
-    "safetensors>=0.4.2", # faster model loading
+    "llama-cpp-python>=0.3.8", # quantised GGUF inference
+    "transformers>=4.51.3", # HF fallback models
+    "sentence-transformers>=4.1.0", # SBERT similarity / ranking
+    "spacy>=3.8.5", # POS tagging
+    "tqdm>=4.67.1", # progress bars
+    "accelerate>=1.6.0", # CPU / Metal dispatch helpers
+    "safetensors>=0.5.3", # faster model loading
 ]
 
 [project.optional-dependencies]
 # Extra packages for development & testing
 dev = [
-    "black>=24.3.0",
-    "ruff>=0.4.2",
-    "pre-commit>=3.6.2",
-    "pytest>=8.1.0",
-    "ipykernel>=6.29.4",
+    "black>=25.1.0",
+    "ruff>=0.11.6",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "ipykernel>=6.29.5",
 ]
 
 [project.urls]
