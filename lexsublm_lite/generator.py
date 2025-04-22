@@ -103,14 +103,36 @@ class HFGen(BaseGenerator):
         self.device = self.model.device
         _LOG.info("Model ready on %s", self.device)
 
-    # -- generation -------------------------------------------- #
+    # -- generation ------------------------------------------------- #
     def generate(self, prompt: str, *, n: int = 5, temperature: float = 0.7) -> Sequence[str]:
-        toks = self.tok([prompt] * n, return_tensors="pt", padding=True).to(self.device)
-        streamer = TextIteratorStreamer(self.tok, skip_prompt=True, skip_special_tokens=True)
-        self.model.generate(
-            **toks, max_new_tokens=1, do_sample=True, temperature=temperature, top_k=50, streamer=streamer
-        )
-        return [next(streamer).strip() for _ in range(n)]
+        if n == 1:
+            # streaming path (nice for inter­active UIs, still batch=1)
+            toks = self.tok(prompt, return_tensors="pt").to(self.device)
+            streamer = TextIteratorStreamer(self.tok, skip_prompt=True, skip_special_tokens=True)
+            self.model.generate(
+                **toks,
+                max_new_tokens=1,
+                do_sample=True,
+                temperature=temperature,
+                top_k=50,
+                streamer=streamer,
+            )
+            return [next(streamer).strip()]
+        # ---------- n > 1 ------------------------------------------------ #
+        out: list[str] = []
+        for _ in range(n):
+            toks = self.tok(prompt, return_tensors="pt").to(self.device)
+            gen_ids = self.model.generate(
+                **toks,
+                max_new_tokens=1,
+                do_sample=True,
+                temperature=temperature,
+                top_k=50,
+                pad_token_id=self.tok.eos_token_id,
+            )[0]
+            # last token is the new word
+            out.append(self.tok.decode(gen_ids[-1]).strip())
+        return out
 
     # -- log‑prob ---------------------------------------------- #
     def log_prob(self, prompt: str, token: str) -> float:
