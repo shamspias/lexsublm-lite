@@ -1,0 +1,50 @@
+[build-system]
+requires = ["flit_core>=3.9"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "masked-lexical-substitution"
+version = "0.1.0"
+description = "Context-aware lexical substitution with lightweight LLMs"
+readme = "README.md"
+authors = [
+    { name = "Shamsuddin Ahmed", email = "info@shamspias.com" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["NLP", "lexical substitution", "LLM", "semantic", "SemEval"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+]
+
+# Core runtime dependencies
+dependencies = [
+    "llama-cpp-python>=0.2.19", # quantised GGUF inference
+    "transformers>=4.39.3", # HF fallback models
+    "sentence-transformers>=2.6.1", # SBERT similarity / ranking
+    "spacy>=3.7.2", # POS tagging
+    "tqdm>=4.66.4", # progress bars
+    "accelerate>=0.28.0", # CPU / Metal dispatch helpers
+    "safetensors>=0.4.2", # faster model loading
+]
+
+[project.optional-dependencies]
+# Extra packages for development & testing
+dev = [
+    "black>=24.3.0",
+    "ruff>=0.4.2",
+    "pre-commit>=3.6.2",
+    "pytest>=8.1.0",
+    "ipykernel>=6.29.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/shamspias/masked-lexical-substitution"
+Issues = "https://github.com/shamspias/masked-lexical-substitution/issues"
+
+[project.scripts]
+lexsublm = "lexsublm.cli:main"
