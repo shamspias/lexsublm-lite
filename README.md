@@ -177,3 +177,35 @@ PRs & issues welcome 🙂
 * Added benchmark instructions using `tabulate2`.  
 * Clarified MPS/CPU vs CUDA install steps.  
 * Mentioned GGUF option explicitly.
+```
+
+### 🐛 Issues
+
+<details>
+<summary><strong>🔐 Hugging Face: Gated model access (e.g. LLaMA 3)</strong></summary>
+
+If you get an error like:
+
+```
+401 Client Error: Unauthorized for url: https://huggingface.co/meta-llama/Llama-3.2-1B/resolve/main/config.json
+```
+
+You are trying to access a **gated model** that requires authentication.
+
+#### ✅ Solution:
+
+1. **Log in to Hugging Face from terminal:**
+
+   ```bash
+   huggingface-cli login
+   ```
+
+2. **Get your token** from  
+   👉 https://huggingface.co/settings/tokens
+
+3. Paste the token when prompted.
+
+4. **(Optional)** Request model access here:  
+   👉 https://huggingface.co/meta-llama/Llama-3.2-1B
+
+</details>
