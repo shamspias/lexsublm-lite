@@ -1,16 +1,17 @@
-# ────────────────────────  LexSubLM‑Lite  ────────────────────────
-# alias : HF repo‑id  (or local GGUF path)
-# you can add / edit entries at any time; no code changes needed
+# ────────────────────────  LexSubLM-Lite  ────────────────────────
+# alias : HF repo-id  (or local GGUF path)
 # ──────────────────────────────────────────────────────────────────
 
-deepseek-coder: deepseek-ai/deepseek-coder-1.3b-instruct          # 1.3 B, EN+ZH code & NL  :contentReference[oaicite:0]{index=0}
-deepseek-qwen: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B         # 1.5 B distilled chat     :contentReference[oaicite:1]{index=1}
-llama3-mini: meta-llama/Llama-3.2-1B                           # 1 B multilingual instr.  :contentReference[oaicite:2]{index=2}
-gemma-2b: google/gemma-2b                                   # 2 B, MIT‑licensed        :contentReference[oaicite:4]{index=4}
-tinyllama: TinyLlama/TinyLlama-1.1B-Chat-v1.0                # 1.1 B tiny LLM           :contentReference[oaicite:5]{index=5}
-minicipm-2b: openbmb/MiniCPM-2B-128k                           # 2 B, 128 k context        :contentReference[oaicite:6]{index=6}
-qwen4b: wenbopan/Faro-Qwen-4B                             # 4 B instruction‑tuned     :contentReference[oaicite:7]{index=7}
-redpajama-3b: togethercomputer/RedPajama-INCITE-Instruct-3B-v1  # 3 B instruct             :contentReference[oaicite:8]{index=8}
-yi-1.5b: 01-ai/Yi-Coder-1.5B-Chat                          # 1.5 B multilingual code   :contentReference[oaicite:9]{index=9}
-mistral-7b-gguf: ./models/Mistral-7B-Instruct-v0.2-Q4_K_M.gguf     # 7 B Q4 GGUF for Mac CPU   :contentReference[oaicite:10]{index=10}
-tiny-llama-gguf: ./models/TinyLlama-1.1B-Chat-Q4_K_M.gguf          # 1.1 B Q4 GGUF local file  :contentReference[oaicite:11]{index=11}
+# KEEP this one as-is (1 B params)
+llama3-mini: meta-llama/Llama-3.2-1B
+
+# ↓ All others replaced with "tiny" HF models ↓
+
+# Distilled GPT-2, ~82 M params (smallest general-purpose causal LM) :contentReference[oaicite:0]{index=0}
+distilgpt2: distilgpt2
+
+# GPT-Neo 125 M params (open‐source GPT-3 replica) :contentReference[oaicite:1]{index=1}
+gpt-neo-125m: EleutherAI/gpt-neo-125m
+
+# OPT-125 M params (Meta’s smallest OPT) :contentReference[oaicite:2]{index=2}
+opt-125m: facebook/opt-125m
