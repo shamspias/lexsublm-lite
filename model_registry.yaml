@@ -2,16 +2,9 @@
 # alias : HF repo-id  (or local GGUF path)
 # ──────────────────────────────────────────────────────────────────
 
-# KEEP this one as-is (1 B params)
 llama3-mini: meta-llama/Llama-3.2-1B
-
-# ↓ All others replaced with "tiny" HF models ↓
-
-# Distilled GPT-2, ~82 M params (smallest general-purpose causal LM) :contentReference[oaicite:0]{index=0}
-distilgpt2: distilgpt2
-
-# GPT-Neo 125 M params (open‐source GPT-3 replica) :contentReference[oaicite:1]{index=1}
+distilgpt2: distilbert/distilgpt2
+qwen500m: Qwen/Qwen2.5-0.5B
+tinyllama: Maykeye/TinyLLama-v0
 gpt-neo-125m: EleutherAI/gpt-neo-125m
-
-# OPT-125 M params (Meta’s smallest OPT) :contentReference[oaicite:2]{index=2}
 opt-125m: facebook/opt-125m
