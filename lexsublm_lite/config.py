@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     """Environment‑driven configuration."""
 
     # ---- public fields (can be overridden via env or CLI) ---------------- #
-    model_name: str = "deepseek-ai/deepseek-coder-1.3b-instruct"
+    model_name: str = "distilbert/distilgpt2"
     device: str = "mps"  # "mps" for Apple   Silicon, "cuda" for GPU
     cache_dir: Path = Path.home() / ".cache" / "lexsublm_lite"
     log_level: str = "INFO"
