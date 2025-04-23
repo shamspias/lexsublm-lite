@@ -40,7 +40,7 @@ class _EvalCommand:
         p = sub.add_parser("eval", help="Evaluate on a dataset")
         p.add_argument("--dataset",
                        required=True,
-                       choices=["swords", "prolex"],
+                       choices=["swords", "prolex", "tsar22"],
                        help="Which dataset to evaluate: swords or prolex")
         p.add_argument("--split",
                        default="test",
@@ -56,18 +56,15 @@ class _EvalCommand:
             "swords": root / "swords" / f"swords-v1.1_{args.split}.json.gz",
             "prolex": root / "prolex" / f"ProLex_v1.0_{args.split}.csv",
         }
-        # Initialize scorer based on dataset
         if args.dataset == "swords":
             scorer = SwordsScorer(file_map["swords"])
         else:
             scorer = ProLexScorer(file_map["prolex"])
 
-        # Build pipeline, optionally with a custom model
         pipeline = LexSubPipeline(model_name=args.model)
 
         metrics_sum: Dict[str, float] = {}
         n = 0
-        # Iterate through dataset
         for sent_id, sent, target in _iter_dataset(file_map[args.dataset], args.dataset):
             preds = pipeline.substitute(sent, target)
             row = scorer.score_row(sent_id, target, preds)
@@ -75,7 +72,6 @@ class _EvalCommand:
                 metrics_sum[metric] = metrics_sum.get(metric, 0.0) + value
             n += 1
 
-        # Compute means
         means = {metric: total / n for metric, total in metrics_sum.items()}
         print(json.dumps(means, indent=2))
 
@@ -103,11 +99,14 @@ def _iter_dataset(path: Path, kind: str):
         else:
             raise ValueError(f"Unrecognized SWORDS JSON format: {type(data)}")
     else:
-        # ProLex CSV
+        # ProLex CSV: no sent_id column
         with open(path, newline="", encoding="utf-8") as fh:
             reader = csv.DictReader(fh)
-            for row in reader:
-                yield row["sent_id"], row["sentence"], row["target"]
+            for idx, row in enumerate(reader):
+                sent_id = str(idx)
+                sentence = row.get("Sentence") or row.get("sentence")
+                target = row.get("target word")
+                yield sent_id, sentence, target
 
 
 def main(argv: list[str] | None = None) -> None:
