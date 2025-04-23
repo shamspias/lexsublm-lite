@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer, util
 
 _NLP = spacy.load("en_core_web_sm", disable=["ner", "parser"])
 # _SBERT = SentenceTransformer("intfloat/e5-small-v2")  # compact 20 MB int8
-_SBERT = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")  # compact 20 MB int8
+_SBERT = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 
 def _coarse_tag(word: str) -> str:
