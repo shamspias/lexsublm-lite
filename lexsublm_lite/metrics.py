@@ -79,13 +79,6 @@ class SwordsScorer:
 class ProLexScorer:
     """
     Compute P@1 / R@10 / GAP and ProF1 over ProLex’s proficiency-oriented substitutes.
-
-    The ProLex CSV has columns:
-      - target word
-      - Sentence
-      - prof_acc_subs (a Python-list string of advanced substitutes)
-
-    We enumerate rows to assign sent_ids internally.
     """
 
     def __init__(self, split_path: Path):
@@ -108,3 +101,30 @@ class ProLexScorer:
         gap = _ScoreHelpers.gap(pred, gold)
         prof1 = float(bool(pred and pred[0] in gold))
         return {"P@1": p1, "R@10": r10, "GAP": gap, "ProF1": prof1}
+
+
+class TsarScorer:
+    """
+    Compute P@1 / R@10 / GAP over TSAR-2022 test splits.
+    Assumes the TSV format: Sentence<TAB>ComplexWord<TAB>Annotation1<TAB>...
+    """
+
+    def __init__(self, split_path: Path):
+        self._gold: Dict[str, List[str]] = {}
+        with open(split_path, newline="", encoding="utf-8") as fh:
+            for idx, line in enumerate(fh):
+                parts = line.strip().split('\t')
+                if len(parts) < 3:
+                    # no annotations to score against
+                    continue
+                sentence, target, *annotations = parts
+                key = f"{idx}::{target}"
+                self._gold[key] = annotations
+
+    def score_row(self, sent_id: str, target: str, pred: Sequence[str]) -> Dict[str, float]:
+        gold = self._gold.get(f"{sent_id}::{target}", [])
+        return {
+            "P@1": _ScoreHelpers.p_at_1(pred, gold),
+            "R@10": _ScoreHelpers.recall_at_10(pred, gold),
+            "GAP": _ScoreHelpers.gap(pred, gold),
+        }
