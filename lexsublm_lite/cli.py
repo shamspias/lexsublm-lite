@@ -1,5 +1,5 @@
 """
-CLI with `run`, `eval`, and `download` sub‑commands (argparse, class‑based).
+CLI with `run`, `eval`, and `download` sub-commands (argparse, class-based).
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ class _EvalCommand:
     """Benchmark on SWORDS / ProLex."""
 
     @staticmethod
-    def add_parser(sub: argparse._SubParsersAction[Argparse]) -> None:  # type: ignore[name-defined]
+    def add_parser(sub: argparse._SubParsersAction[Any]) -> None:  # type: ignore[name-defined]
         p = sub.add_parser("eval", help="Evaluate on a dataset")
         p.add_argument(
             "--dataset",
@@ -55,9 +55,7 @@ class _EvalCommand:
             "prolex": root / "prolex" / f"ProLex_v1.0_{args.split}.csv",
         }
         scorer = (
-            SwordsScorer(file_map["swords"])
-            if args.dataset == "swords"
-            else ProLexScorer(file_map["prolex"])
+            SwordsScorer(file_map["swords"]) if args.dataset == "swords" else ProLexScorer(file_map["prolex"])
         )
         pipeline = LexSubPipeline()
         metrics_sum: Dict[str, float] = {}
@@ -75,16 +73,39 @@ class _EvalCommand:
 def _iter_dataset(path: Path, kind: str):
     import gzip
     import csv
+    # JSON parser for nested or flat formats
     if kind == "swords":
         import orjson as json
 
         open_f = gzip.open if path.suffix == ".gz" else open
         with open_f(path, "rb") as fh:  # type: ignore[arg-type]
-            for obj in json.loads(fh.read()):
-                yield obj["id"], obj["context"], obj["word"]
-    else:  # prolex CSV
+            data = json.loads(fh.read())
+
+        # Nested p-lambda format
+        if isinstance(data, dict) and "substitutes" in data:
+            contexts = data.get("contexts", {})
+            targets = data.get("targets", {})
+            for tid, tgt in targets.items():
+                # Each target has a context_id linking to contexts
+                cid = tgt.get("context_id")
+                ctx_entry = contexts.get(cid, {})
+                sentence = None
+                if isinstance(ctx_entry, dict):
+                    sentence = ctx_entry.get("context")
+                yield tid, sentence, tgt.get("target")
+
+        # Flat-list format
+        elif isinstance(data, list):
+            for obj in data:
+                yield obj["id"], obj.get("context"), obj.get("word")
+
+        else:
+            raise ValueError(f"Unrecognized SWORDS JSON format: {type(data)}")
+    else:
+        # ProLex CSV format
         with open(path, newline="", encoding="utf-8") as fh:
-            for row in csv.DictReader(fh):
+            reader = csv.DictReader(fh)
+            for row in reader:
                 yield row["sent_id"], row["sentence"], row["target"]
 
 
