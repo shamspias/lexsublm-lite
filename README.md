@@ -110,18 +110,12 @@ Prints a Markdown table sorted by Precision @ 1.
 ## 6 · Default model registry (12 aliases)
 
 ```yaml
-deepseek-coder: deepseek-ai/deepseek-coder-1.3b-instruct
-deepseek-qwen: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
 llama3-mini: meta-llama/Llama-3.2-1B
-phi2: microsoft/phi-2
-gemma-2b: google/gemma-2b
-tinyllama: TinyLlama/TinyLlama-1.1B-Chat-v1.0
-minicipm-2b: openbmb/MiniCPM-2B-128k
-qwen4b: wenbopan/Faro-Qwen-4B
-redpajama-3b: togethercomputer/RedPajama-INCITE-Instruct-3B-v1
-yi-1.5b: 01-ai/Yi-Coder-1.5B-Chat
-mistral-7b-gguf: ./models/Mistral-7B-Instruct-v0.2-Q4_K_M.gguf
-tiny-llama-gguf: ./models/TinyLlama-1.1B-Chat-Q4_K_M.gguf
+distilgpt2: distilbert/distilgpt2
+qwen500m: Qwen/Qwen2.5-0.5B
+tinyllama: Maykeye/TinyLLama-v0
+gpt-neo-125m: EleutherAI/gpt-neo-125m
+opt-125m: facebook/opt-125m
 ```
 
 Add or edit entries at will; the CLI picks them up automatically.
