@@ -38,10 +38,7 @@ of a word inside its sentence.
 # 1 . create & activate a virtual env / conda env
 python -m pip install --upgrade pip
 
-# 2 . install from PyPI (CPU / M‑series)
-pip install lexsublm-lite tabulate2
-
-# 3 . OR dev‑mode clone
+# 2 . dev‑mode clone
 git clone https://github.com/shamspias/lexsublm-lite
 cd lexsublm-lite
 pip install -e .
